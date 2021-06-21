@@ -1,6 +1,5 @@
 from typing import Any
 from displayarray import display
-from tests.pics import dark_neuron, grey_neuron
 from torch.autograd import Function
 from torch import Tensor
 import torch
@@ -102,6 +101,8 @@ class RandSparse(torch.nn.Module):
 
 
 if __name__ == '__main__':
+    from tests.pics import medium, smol
+
     class sparsifier(torch.nn.Module):
         def __init__(self):
             super(sparsifier, self).__init__()
@@ -112,7 +113,7 @@ if __name__ == '__main__':
             return x
 
 
-    displayer = display(dark_neuron)
+    displayer = display(smol)
     model = sparsifier().cuda()
 
     while displayer:

@@ -1,6 +1,6 @@
 from typing import Any
 from displayarray import display
-from tests.pics import dark_neuron, grey_neuron
+from tests.pics import medium, smol
 from torch.autograd import Function
 from torch import Tensor
 import torch
@@ -111,7 +111,7 @@ if __name__ == '__main__':
             return x
 
 
-    displayer = display(dark_neuron)
+    displayer = display(smol)
     model = sparsifier().cuda()
 
     while displayer:
