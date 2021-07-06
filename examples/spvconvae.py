@@ -1,7 +1,7 @@
 from displayarray import display
 # from tests.videos import test_video_2
 from sparsifying_conv import SparsifyingConv2DFunc, SparsifyingConv2D
-from tests.pics import neuron_pic_small
+from tests.pics import smol
 from torch import Tensor
 from torch.nn.common_types import _size_2_t
 from typing import Optional, Union
@@ -17,7 +17,7 @@ import logging
 
 log_stats = False
 
-displayer = display(neuron_pic_small)
+displayer = display(smol)
 intermediate_layer_visualizer = displayer
 
 _logger_dict = {}
@@ -91,7 +91,6 @@ class DbgSparsifyingConv2D(SparsifyingConv2D):
             padding_mode: str = 'zeros',  # TODO: refine this type
             xy_sparsity_lr=1e-5,
             c_sparsity_lr=1e-4,
-            c_organization_lr=1.0
     ):
         super(DbgSparsifyingConv2D, self).__init__(
             in_channels,
@@ -105,7 +104,6 @@ class DbgSparsifyingConv2D(SparsifyingConv2D):
             padding_mode,
             xy_sparsity_lr,
             c_sparsity_lr,
-            c_organization_lr
         )
         self.conv = DbgSpBpConv2D()
 
@@ -114,7 +112,7 @@ if __name__ == '__main__':
     class autoencoder(nn.Module):
         def __init__(self):
             super(autoencoder, self).__init__()
-            self.encoder = DbgSparsifyingConv2D(3, 32, (3, 3), 1, 0, 1, 1, True, 'zeros')
+            self.encoder = SparsifyingConv2D(3, 32, (3, 3), 1, 0, 1, 1, True, 'zeros')
             self.decoder = nn.ConvTranspose2d(32, 3, (3, 3), 1, 0, 0, 1, True, 1, 'zeros')
 
         def forward(self, x):
@@ -123,7 +121,7 @@ if __name__ == '__main__':
             return x
 
 
-    learning_rate = 1e-4
+    learning_rate = 1e-3
     model = autoencoder().cuda()
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(
@@ -142,14 +140,7 @@ if __name__ == '__main__':
             grab = torch.swapaxes(grab, 2, 3)
             img = Variable(grab).cuda()
 
-            if i % 10 == 0:
-                model.encoder.sort_channel_pass_pre()
             output = model(img)
-            if i % 10 == 0:
-                model.encoder.sort_channel_pass_post()
-                gc.collect()
-                with torch.no_grad():
-                    torch.cuda.empty_cache()
 
             vis_output = output.detach()
             vis_output = torch.swapaxes(vis_output, 2, 3)
