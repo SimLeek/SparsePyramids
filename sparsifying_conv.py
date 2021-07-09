@@ -82,6 +82,8 @@ class SparsifyingConv2D(torch.nn.Conv2d):
             padding_mode: str = 'zeros',  # TODO: refine this type
             xy_sparsity_lr=1e-5,
             c_sparsity_lr=1e-4,
+            device=None,
+            dtype=None
     ):
         super(SparsifyingConv2D, self).__init__(
             in_channels,
@@ -92,7 +94,9 @@ class SparsifyingConv2D(torch.nn.Conv2d):
             dilation,
             groups,
             bias,
-            padding_mode
+            padding_mode,
+            device,
+            dtype
         )
         self.conv = SparsifyingConv2DFunc()
         self.xy_sparsity_lr = xy_sparsity_lr
