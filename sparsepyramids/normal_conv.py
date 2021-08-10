@@ -7,18 +7,18 @@ from typing import Optional, List
 
 class NormConv2d(torch.nn.Conv2d):
     def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            kernel_size: _size_2_t,
-            stride: _size_2_t = 1,
-            padding: _size_2_t = 0,
-            dilation: _size_2_t = 1,
-            groups: int = 1,
-            bias: bool = True,
-            padding_mode: str = 'zeros',  # TODO: refine this type
-            device=None,
-            dtype=None
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_2_t,
+        stride: _size_2_t = 1,
+        padding: _size_2_t = 0,
+        dilation: _size_2_t = 1,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = "zeros",  # TODO: refine this type
+        device=None,
+        dtype=None,
     ):
         super(NormConv2d, self).__init__(
             in_channels,
@@ -31,14 +31,13 @@ class NormConv2d(torch.nn.Conv2d):
             bias,
             padding_mode,
             device,
-            dtype
+            dtype,
         )
 
     def forward(self, input: Tensor) -> Tensor:
         eps = 1e-6
         disteps = 1e-2
 
-        # todo: only do this whenever the max is far enough from 1 in order to save calculations
         if self.training:
             with torch.no_grad():
                 # mimic physical weights. You can't be more than 100% connected, and having nan values pop up is stupid.
@@ -66,19 +65,19 @@ class NormConv2d(torch.nn.Conv2d):
 
 class NormConvTranspose2d(torch.nn.ConvTranspose2d):
     def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            kernel_size: _size_2_t,
-            stride: _size_2_t = 1,
-            padding: _size_2_t = 0,
-            output_padding: _size_2_t = 0,
-            groups: int = 1,
-            bias: bool = True,
-            dilation: _size_2_t = 1,
-            padding_mode: str = 'zeros',  # TODO: refine this type
-            device=None,
-            dtype=None
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_2_t,
+        stride: _size_2_t = 1,
+        padding: _size_2_t = 0,
+        output_padding: _size_2_t = 0,
+        groups: int = 1,
+        bias: bool = True,
+        dilation: _size_2_t = 1,
+        padding_mode: str = "zeros",  # TODO: refine this type
+        device=None,
+        dtype=None,
     ):
         super(NormConvTranspose2d, self).__init__(
             in_channels,
@@ -92,7 +91,7 @@ class NormConvTranspose2d(torch.nn.ConvTranspose2d):
             dilation,
             padding_mode,
             device,
-            dtype
+            dtype,
         )
 
     def forward(self, input: Tensor, output_size: Optional[List[int]] = None) -> Tensor:

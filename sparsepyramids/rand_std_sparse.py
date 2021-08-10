@@ -1,9 +1,11 @@
 from typing import Any
 from displayarray import display
+from sparsepyramids.tests import dark_neuron
 from torch.autograd import Function
 from torch import Tensor
 import torch
 import numpy as np
+
 
 def _eliminate_zeros(x: Tensor):
     mask = x._values().nonzero()
@@ -28,19 +30,20 @@ def percentile_to_std(percentile):
 fifty_percent_std = 0.8696735925295496849668947505414
 
 
-class RandSparseFunc(Function):
+class RandStdSparseFunc(Function):
     @staticmethod
-    def forward(ctx,
-                input: Tensor,
-                avg_percent_activation: float = 0.05,
-                make_sparse_tensor=True,
-                mean = None
-                ):
+    def forward(
+        ctx,
+        input: Tensor,
+        avg_percent_activation: float = 0.05,
+        make_sparse_tensor=True,
+        mean=None,
+        rand_portion=0.5,
+    ):
         """
 
-        Note: no guarantee on actual sparsity output, though it is much closer than std_sparse, because a normal
-        distribution is created for each output. The output coulg be much greater or lesser than the chosen percentage,
-        but you'd have to be really unlucky.
+        Note: closeness to actual sparsity depends on rand_portion and luck. As rand_portion approaches 1, sparsity
+        will match avg_percent_activation more and more.
 
         :param ctx:
         :param input:
@@ -55,7 +58,8 @@ class RandSparseFunc(Function):
         goal_std = percentile_to_std(1.0 - avg_percent_activation)
         normalized = torch.abs(out / std - mean) / fifty_percent_std
         renorm = torch.normal(mean=0.0, std=normalized)
-        out[renorm < goal_std] = 0
+        final_norm = rand_portion * renorm + (1.0 - rand_portion) * normalized
+        out[final_norm < goal_std] = 0
 
         ctx.was_sparse = input.is_sparse
         if input.is_sparse and make_sparse_tensor:
@@ -74,52 +78,63 @@ class RandSparseFunc(Function):
 
     @staticmethod
     def backward(ctx: Any, grad_output) -> Any:
-        '''if ctx.is_sparse and not ctx.was_sparse:
+        """if ctx.is_sparse and not ctx.was_sparse:
             return grad_output.to_dense(), None
         elif not ctx.is_sparse and ctx.was_sparse:
-            return _handle_sparse_conversion(grad_output)'''
-        return grad_output, None, None, None
+            return _handle_sparse_conversion(grad_output)"""
+        return grad_output
 
-class RandSparse(torch.nn.Module):
 
+class RandStdSparse(torch.nn.Module):
     def __init__(
-            self,
-            avg_percent_activation: float = 0.05,
-            make_sparse_tensor=True,
-            mean=None
+        self,
+        avg_percent_activation: float = 0.05,
+        make_sparse_tensor=True,
+        mean=None,
+        rand_portion=0.5,
     ):
-        super(RandSparse, self).__init__()
-        self.std_func = RandSparseFunc()
+        super(RandStdSparse, self).__init__()
+        self.std_func = RandStdSparseFunc()
         self.avg_percent_activation = avg_percent_activation
         self.make_sparse_tensor = make_sparse_tensor
         self.mean = mean
+        self.rand_portion = rand_portion
 
     def forward(self, input: Tensor) -> Tensor:
-        out = self.std_func.apply(input, self.avg_percent_activation, self.make_sparse_tensor, self.mean)
+        out = self.std_func.apply(
+            input,
+            self.avg_percent_activation,
+            self.make_sparse_tensor,
+            self.mean,
+            self.rand_portion,
+        )
 
         return out
 
 
-if __name__ == '__main__':
-    from tests.pics import medium, smol
+if __name__ == "__main__":
 
     class sparsifier(torch.nn.Module):
         def __init__(self):
             super(sparsifier, self).__init__()
-            self.sp = RandSparse(avg_percent_activation=.02, make_sparse_tensor=False, mean=0.0)
+            self.sp = RandStdSparse(
+                avg_percent_activation=0.02, make_sparse_tensor=False, mean=0.0
+            )
 
         def forward(self, x):
             x = self.sp(x)
             return x
 
-
-    displayer = display(smol)
+    displayer = display(dark_neuron)
     model = sparsifier().cuda()
 
     while displayer:
         displayer.update()
         grab = torch.from_numpy(
-            next(iter(displayer.FRAME_DICT.values()))[np.newaxis, ...].astype(np.float32) / 255.0
+            next(iter(displayer.FRAME_DICT.values()))[np.newaxis, ...].astype(
+                np.float32
+            )
+            / 255.0
         )
         grab = torch.swapaxes(grab, 1, 3)
         grab = torch.swapaxes(grab, 2, 3)

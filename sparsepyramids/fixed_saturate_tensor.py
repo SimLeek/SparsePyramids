@@ -11,10 +11,11 @@ def map_cos(x):
     return o
 
 
-def saturate_tensor(ndim,  # type: int
-                    in_channels,  # type: int
-                    dist_func=map_cos
-                    ):
+def saturate_tensor(
+    ndim,  # type: int
+    in_channels,  # type: int
+    dist_func=map_cos,
+):
     mat = torch.zeros((in_channels, in_channels))
     for i in range(in_channels):
         for o in range(in_channels):
@@ -32,8 +33,8 @@ def saturate_tensor(ndim,  # type: int
 
 def test_saturate_tensor():
     from displayarray import breakpoint_display
-    from tests.pics import smol
-    from PIL import Image, ImageOps
+    from sparsepyramids.tests import smol
+    from PIL import Image
     import numpy as np
     import torch.nn.functional as F
 
@@ -53,7 +54,7 @@ def test_saturate_tensor():
         lo = lo / torch.max(lo)
         l = l / torch.max(l)
 
-        lo2 = l * .5 + lo * .5
+        lo2 = l * 0.5 + lo * 0.5
         lo2 = lo2 / torch.max(lo2)
 
         l = torch.squeeze(l)
@@ -71,10 +72,12 @@ def test_saturate_tensor():
         breakpoint_display(l.cpu().numpy(), lo.cpu().numpy(), lo2.cpu().numpy())
 
 
-def saturate_duplicates_tensor(ndim,  # type: int
-                               in_channels,  # type: int
-                               sub_channels,  # type: int
-                               dist_func=map_cos):
+def saturate_duplicates_tensor(
+    ndim,  # type: int
+    in_channels,  # type: int
+    sub_channels,  # type: int
+    dist_func=map_cos,
+):
     mat = saturate_tensor(ndim, in_channels, dist_func)
     dup_mat = torch.repeat_interleave(mat, sub_channels, dim=0)
     dup_mat = torch.repeat_interleave(dup_mat, sub_channels, dim=1)

@@ -1,16 +1,16 @@
 from displayarray import display
+
 # from tests.videos import test_video_2
-from sparsifying_conv import SparsifyingConv2DFunc, SparsifyingConv2D
-from tests.pics import smol
+from sparsepyramids.sparsifying_conv import SparsifyingConv2DFunc, SparsifyingConv2D
+from sparsepyramids.tests.pics import smol
 from torch import Tensor
 from torch.nn.common_types import _size_2_t
 from typing import Optional, Union
 from torch.types import _int, _size
 import torch
-from visual_debug import make_dispalyable_image_tensor
+from sparsepyramids.visual_debug import make_dispalyable_image_tensor
 from torch import nn
 from torch.autograd import Variable
-import gc
 import numpy as np
 
 import logging
@@ -25,17 +25,18 @@ _logger_dict = {}
 
 class DbgSpBpConv2D(SparsifyingConv2DFunc):
     @staticmethod
-    def forward(ctx,
-                input: Tensor,
-                weight: Tensor,
-                bias: Optional[Tensor] = None,
-                stride: Union[_int, _size] = 1,
-                padding: Union[_int, _size] = 0,
-                dilation: Union[_int, _size] = 1,
-                groups: _int = 1,
-                variational_lr=1e-4,
-                sparsity_lr=1e-5
-                ):
+    def forward(
+        ctx,
+        input: Tensor,
+        weight: Tensor,
+        bias: Optional[Tensor] = None,
+        stride: Union[_int, _size] = 1,
+        padding: Union[_int, _size] = 0,
+        dilation: Union[_int, _size] = 1,
+        groups: _int = 1,
+        variational_lr=1e-4,
+        sparsity_lr=1e-5,
+    ):
         out = SparsifyingConv2DFunc.forward(
             ctx,
             input,
@@ -57,40 +58,47 @@ class DbgSpBpConv2D(SparsifyingConv2DFunc):
             outpmax = torch.numel(out)
 
             if hash(ctx) not in _logger_dict.keys():
-                logger = logging.getLogger(f'sparse_variational_convolution_layer_logger{hash(ctx)}')
+                logger = logging.getLogger(
+                    f"sparse_variational_convolution_layer_logger{hash(ctx)}"
+                )
                 logger.setLevel(logging.INFO)
-                handler = logging.FileHandler(f'sparse_variational_convolution_layer_log{hash(ctx)}.csv')
+                handler = logging.FileHandler(
+                    f"sparse_variational_convolution_layer_log{hash(ctx)}.csv"
+                )
                 logger.addHandler(handler)
-                logger.info('Num Elements, Abs(Elements)>1, Abs(Elements)>.1, Abs(Elements)>.01, Abs(Elements)>.001,\n')
+                logger.info(
+                    "Num Elements, Abs(Elements)>1, Abs(Elements)>.1, Abs(Elements)>.01, Abs(Elements)>.001,\n"
+                )
                 _logger_dict[hash(ctx)] = logger
             else:
                 logger = _logger_dict[hash(ctx)]
-            logger.info(f'{outpmax}, {outp1}, {outp01}, {outp001}, {outp0001},\n')
+            logger.info(f"{outpmax}, {outp1}, {outp01}, {outp001}, {outp0001},\n")
 
         # note: On most images/videos, you should eventually see a grey background, rgb lines depending on orientation,
         # and textures seperated into rgb. This depends on which output channel you map to rgb for your visualizer.
         if intermediate_layer_visualizer is not None:
-            intermediate_layer_visualizer.update(make_dispalyable_image_tensor(out)[0].detach().cpu().numpy(),
-                                                 f'SpBpConv2D 0 forward output')
+            intermediate_layer_visualizer.update(
+                make_dispalyable_image_tensor(out)[0].detach().cpu().numpy(),
+                f"SpBpConv2D 0 forward output",
+            )
 
         return out
 
 
 class DbgSparsifyingConv2D(SparsifyingConv2D):
-
     def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            kernel_size: _size_2_t,
-            stride: _size_2_t = 1,
-            padding: _size_2_t = 0,
-            dilation: _size_2_t = 1,
-            groups: int = 1,
-            bias: bool = True,
-            padding_mode: str = 'zeros',  # TODO: refine this type
-            xy_sparsity_lr=1e-5,
-            c_sparsity_lr=1e-4,
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_2_t,
+        stride: _size_2_t = 1,
+        padding: _size_2_t = 0,
+        dilation: _size_2_t = 1,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = "zeros",  # TODO: refine this type
+        xy_sparsity_lr=1e-5,
+        c_sparsity_lr=1e-4,
     ):
         super(DbgSparsifyingConv2D, self).__init__(
             in_channels,
@@ -108,24 +116,27 @@ class DbgSparsifyingConv2D(SparsifyingConv2D):
         self.conv = DbgSpBpConv2D()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+
     class autoencoder(nn.Module):
         def __init__(self):
             super(autoencoder, self).__init__()
-            self.encoder = SparsifyingConv2D(3, 32, (3, 3), 1, 0, 1, 1, True, 'zeros')
-            self.decoder = nn.ConvTranspose2d(32, 3, (3, 3), 1, 0, 0, 1, True, 1, 'zeros')
+            self.encoder = SparsifyingConv2D(3, 32, (3, 3), 1, 0, 1, 1, True, "zeros")
+            self.decoder = nn.ConvTranspose2d(
+                32, 3, (3, 3), 1, 0, 0, 1, True, 1, "zeros"
+            )
 
         def forward(self, x):
             x = self.encoder(x)
             x = self.decoder(x)
             return x
 
-
     learning_rate = 1e-3
     model = autoencoder().cuda()
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=learning_rate, weight_decay=1e-3)
+        model.parameters(), lr=learning_rate, weight_decay=1e-3
+    )
 
     i = 0
     skip_bool = False
@@ -134,7 +145,10 @@ if __name__ == '__main__':
         if not skip_bool:
             print(i)
             grab = torch.from_numpy(
-                next(iter(displayer.FRAME_DICT.values()))[np.newaxis, ...].astype(np.float32) / 255.0
+                next(iter(displayer.FRAME_DICT.values()))[np.newaxis, ...].astype(
+                    np.float32
+                )
+                / 255.0
             )
             grab = torch.swapaxes(grab, 1, 3)
             grab = torch.swapaxes(grab, 2, 3)
@@ -146,7 +160,8 @@ if __name__ == '__main__':
             vis_output = torch.swapaxes(vis_output, 2, 3)
             vis_output = torch.swapaxes(vis_output, 1, 3)
             displayer.update(
-                (vis_output.cpu().numpy()[0] * 255.0).astype(np.uint8), "autoencoder output"
+                (vis_output.cpu().numpy()[0] * 255.0).astype(np.uint8),
+                "autoencoder output",
             )
             loss = criterion(output, img)
 

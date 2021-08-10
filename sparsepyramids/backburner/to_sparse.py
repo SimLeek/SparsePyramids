@@ -36,10 +36,9 @@ def _eliminate_zeros(x: Tensor):
 
 class PercentMax(Function):
     @staticmethod
-    def forward(ctx,
-                input: Tensor,
-                percent: float = 0.5,
-                ):
+    def forward(
+        ctx, input: Tensor, percent: float = 0.5,
+    ):
         """
 
         :param ctx:
