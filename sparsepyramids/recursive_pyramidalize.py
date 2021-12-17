@@ -10,8 +10,8 @@ import warnings
 import numpy as np
 import sys
 from torch.nn import functional as F
-from .normal_conv import NormConv2d, NormConvTranspose2d
-from .fixed_saturate_tensor import saturate_tensor, saturate_duplicates_tensor
+from sparsepyramids.normal_conv import NormConv2d, NormConvTranspose2d
+from sparsepyramids.fixed_saturate_tensor import saturate_tensor, saturate_duplicates_tensor
 
 
 class RecursivePyramidalize2D(torch.nn.Module):
@@ -455,7 +455,7 @@ class RecursiveSaturateDepyramidalize2D(torch.nn.Module):
         return out
 
 
-from .saturating_conv import SaturatingConv2D
+from sparsepyramids.saturating_conv import SaturatingConv2D
 
 
 class RecursiveDepthDepyramidalize2D(torch.nn.Module):

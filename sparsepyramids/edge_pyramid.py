@@ -55,6 +55,92 @@ def center_surround_tensor(
     return center_surround
 
 
+
+def blur_tensor(
+    ndim,  # type: int
+    size=3,
+    center_in=[1],  # type: List[int]
+    center_out=[1],  # type: List[int]
+):
+    """Generates a multi-channel center center surround matrix. Useful for isolating or enhancing edges.
+    Note: center-surround tensors with 11 or more dimensions may take a while to generate. Make sure you cache those.
+    :param ndim: number of dimensions
+    :param center_in: input tensor of ints representing colors to look for in the center
+    :param center_out: input tensor representing colors to output when more center is detected
+    """
+    assert ndim >= 1
+
+    center_surround = np.ndarray(
+        shape=[size for _ in range(ndim)] + [len(center_in), len(center_out)]
+    )
+
+    total = 0
+    for tup in itertools.product(*[range(size) for _ in range(ndim)]):
+        inv_manhattan_dist = sum([1 - abs(t/((size-1)/2) - 1) for t in tup])
+        if inv_manhattan_dist == 0:
+            center_surround[tup] = [[0 for _ in center_out] for _ in center_in]
+        else:
+            euclidian_dist = m.sqrt(inv_manhattan_dist)
+            center_surround[tup] = [
+                [o * i * euclidian_dist for o in center_out] for i in center_in
+            ]
+            total += euclidian_dist
+    return center_surround
+
+
+def hat_tensor(
+    ndim,  # type: int
+    size=3,
+):
+    """Generates a multi-channel center center surround matrix. Useful for isolating or enhancing edges.
+    Note: center-surround tensors with 11 or more dimensions may take a while to generate. Make sure you cache those.
+    :param ndim: number of dimensions
+    :param center_in: input tensor of ints representing colors to look for in the center
+    :param center_out: input tensor representing colors to output when more center is detected
+    """
+    assert ndim >= 1
+
+    center_surround = np.ndarray(
+        shape=[size for _ in range(ndim)] + [1,1]
+    )
+
+    total = 0
+    for tup in itertools.product(*[range(size) for _ in range(ndim)]):
+        inv_manhattan_dist = sum([1 - abs(t/((size-1)/2) - 1) for t in tup])
+        inv_manhattan_dist_2 = sum([abs((1-t/((size-1)/2))) for t in tup])
+        d = min(inv_manhattan_dist_2, inv_manhattan_dist)
+
+        if d == 0:
+            center_surround[tup] = 0
+        else:
+            euclidian_dist = m.sqrt(d)
+            center_surround[tup] = euclidian_dist
+            total += euclidian_dist
+    return center_surround
+
+def test_hat_tensor():
+    h = hat_tensor(1, 5)
+    print(h)
+
+
+def blur_torch(img, blur_radius=17):
+    blur_y = torch.Tensor(np.squeeze(blur_tensor(1, blur_radius))[None, None, :, None])
+    blur_x = torch.Tensor(np.squeeze(blur_tensor(1, blur_radius))[None, None, None, :])
+
+    ypass = F.conv2d(img, blur_y, padding=(int(blur_radius//2), 0))
+    xpass = F.conv2d(ypass, blur_x, padding=(0, int(blur_radius//2)))
+
+    return xpass
+
+def hat_torch(img, hat_radius=17):
+    blur_y = torch.Tensor(np.squeeze(hat_tensor(1, hat_radius))[None, None, :, None])
+    blur_x = torch.Tensor(np.squeeze(hat_tensor(1, hat_radius))[None, None, None, :])
+
+    ypass = F.conv2d(img, blur_y, padding=(int(hat_radius//2), 0))
+    xpass = F.conv2d(ypass, blur_x, padding=(0, int(hat_radius//2)))
+
+    return xpass
+
 def normalize_tensor_positive_negative(
     tensor,  # type: np.ndarray
     positive_value=1.0,
@@ -173,18 +259,22 @@ def image_to_rgc_pyramid(img, scale_val=m.sqrt(2)):
     return out_imgs
 
 
-def image_to_edge_pyramid(img, scale_val=m.sqrt(2)):
+def image_to_edge_pyramid(img, min_size=(3,3), levels=None, scale_val=m.sqrt(2)):
     global edge
     edge = edge.to(img.device)
 
     in_shape = list(img.shape[-2:])
 
     imgs = [img]
+    l=0
     while True:
         in_shape[0] = m.floor(in_shape[0] / scale_val)
         in_shape[1] = m.floor(in_shape[1] / scale_val)
-        if in_shape[0] <= 3 or in_shape[1] <= 3:
+        if in_shape[0] <= min_size[0] or in_shape[1] <= min_size[1]:
             break
+        if levels is not None and l>=levels:
+            break
+        l+=1
         imgs.append(FV.resize(img, in_shape, FV.InterpolationMode.BILINEAR))
 
     out_imgs = []

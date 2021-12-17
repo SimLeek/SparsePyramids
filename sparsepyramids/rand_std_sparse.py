@@ -1,6 +1,5 @@
 from typing import Any
 from displayarray import display
-from sparsepyramids.tests import dark_neuron
 from torch.autograd import Function
 from torch import Tensor
 import torch
